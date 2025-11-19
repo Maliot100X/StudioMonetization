@@ -67,7 +67,7 @@ export const generateVideoRecommendations = async (query: string = "general"): P
       thumbnailUrl: `https://picsum.photos/seed/${v.id}${query}/640/360`,
       channelAvatar: `https://picsum.photos/seed/${v.channelName}/100/100`,
       videoUrl: sampleVideos[index % sampleVideos.length],
-      channelId: `ch-${Date.now()}-${index}`
+      channelId: `ch-${Date.now()}-${index}` // Assign unique channel IDs
     }));
 
   } catch (error) {

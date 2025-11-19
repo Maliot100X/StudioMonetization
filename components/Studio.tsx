@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User, Video } from '../types';
 import { Button } from './Button';
-import { LayoutDashboard, DollarSign, Video as VideoIcon, Image as ImageIcon, Mic, Sparkles, ArrowLeft, Loader2, CheckCircle, BarChart3, UploadCloud, TrendingUp, HelpCircle, MoreHorizontal, X } from 'lucide-react';
+import { LayoutDashboard, DollarSign, Video as VideoIcon, Image as ImageIcon, Mic, Sparkles, ArrowLeft, Loader2, CheckCircle, UploadCloud, TrendingUp, HelpCircle, X } from 'lucide-react';
 import { generateVeoVideo, generateThumbnail, generateVoiceover } from '../services/geminiService';
 
 interface StudioProps {
@@ -84,7 +84,7 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setUploadFile(file);
-      setUploadMeta({ ...uploadMeta, title: file.name.split('.')[0] });
+      setUploadMeta({ title: file.name.split('.')[0], description: '' });
       simulateUpload();
     }
   };
@@ -116,7 +116,7 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
       channelAvatar: user.avatar,
       views: '0',
       postedAt: 'Just now',
-      duration: '0:00', // In real app, would read metadata
+      duration: '0:30', // Placeholder for demo
       category: 'General',
       isLocal: true
     };
@@ -345,24 +345,6 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
                                 +15% more than usual
                             </div>
                         </div>
-
-                        <div className="bg-[#282828] p-6 rounded-xl border border-[#3f3f3f] relative overflow-hidden">
-                            <div className="flex items-center gap-2 mb-1">
-                                <h3 className="text-gray-400 text-sm font-medium">RPM</h3>
-                                <HelpCircle className="w-3 h-3 text-gray-500" />
-                            </div>
-                            <div className="text-3xl font-bold text-white">$3.42</div>
-                            <p className="text-xs text-gray-400 mt-2">Revenue per 1K views</p>
-                        </div>
-
-                        <div className="bg-[#282828] p-6 rounded-xl border border-[#3f3f3f] relative overflow-hidden">
-                            <div className="flex items-center gap-2 mb-1">
-                                <h3 className="text-gray-400 text-sm font-medium">Playback-based CPM</h3>
-                                <HelpCircle className="w-3 h-3 text-gray-500" />
-                            </div>
-                            <div className="text-3xl font-bold text-white">$8.15</div>
-                            <p className="text-xs text-gray-400 mt-2">Cost for advertisers per 1K views</p>
-                        </div>
                     </div>
                  </div>
               ) : (
@@ -386,22 +368,6 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
                           style={{ width: `${Math.min((user.subscribers / 1000) * 100, 100)}%` }}
                         ></div>
                       </div>
-                      {user.subscribers >= 1000 && <div className="flex items-center gap-1 text-green-500 text-xs mt-1"><CheckCircle className="w-3 h-3"/> Requirement met</div>}
-                    </div>
-
-                    {/* Watch Hours Requirement */}
-                    <div className="mb-8">
-                      <div className="flex justify-between text-sm mb-2">
-                         <span>Reach 4,000 public watch hours</span>
-                         <span className="text-gray-400">{user.watchHours} / 4,000</span>
-                      </div>
-                       <div className="w-full bg-[#1f1f1f] rounded-full h-2">
-                        <div 
-                          className="bg-blue-500 h-2 rounded-full transition-all duration-1000" 
-                          style={{ width: `${Math.min((user.watchHours / 4000) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                      {user.watchHours >= 4000 && <div className="flex items-center gap-1 text-green-500 text-xs mt-1"><CheckCircle className="w-3 h-3"/> Requirement met</div>}
                     </div>
 
                     {/* Action Area */}
@@ -412,15 +378,9 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
                            <span>Reviewing your channel...</span>
                          </div>
                       ) : (
-                         user.subscribers >= 1000 && user.watchHours >= 4000 ? (
-                          <Button onClick={handleApplyMonetization} className="w-full py-3 text-base">
-                            Apply Now
-                          </Button>
-                         ) : (
-                           <Button disabled className="bg-[#3f3f3f] text-gray-500 cursor-not-allowed w-full py-3 text-base">
-                             Email me when eligible
-                           </Button>
-                         )
+                         <Button onClick={handleApplyMonetization} className="w-full py-3 text-base">
+                            {user.subscribers > 100 ? 'Apply Now (Demo Bypass)' : 'Apply Now'}
+                         </Button>
                       )}
                     </div>
                   </div>
@@ -454,11 +414,7 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
                      </label>
                      <textarea 
                         className="w-full bg-transparent text-white outline-none resize-none h-32 placeholder-gray-600"
-                        placeholder={
-                          activeTab === 'create_video' ? "A cyberpunk city with neon lights..." :
-                          activeTab === 'create_thumb' ? "A shocked gamer face with red arrows pointing to..." :
-                          "Welcome back to another video! Today we are talking about..."
-                        }
+                        placeholder="Describe what you want to create..."
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
                      />
@@ -484,13 +440,6 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
                      <div className="bg-[#282828] border border-[#3f3f3f] rounded-xl p-4 animate-fade-in">
                         <div className="flex justify-between items-center mb-4">
                            <h3 className="font-bold">Result</h3>
-                           <Button variant="secondary" onClick={() => {
-                             // In a real app, this would push to a "Publish" flow
-                             alert("Asset saved to library!");
-                             setGeneratedContent(null);
-                           }}>
-                             Save to Library
-                           </Button>
                         </div>
                         
                         <div className="bg-black rounded-lg overflow-hidden flex items-center justify-center min-h-[200px]">

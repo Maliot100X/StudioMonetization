@@ -75,9 +75,10 @@ const App: React.FC = () => {
       const newVideos = await generateVideoRecommendations(query);
       // Prepend any local uploads we might have in memory if they match criteria (simplified)
       setVideos(prev => {
-        // keep local uploads
         const locals = prev.filter(v => v.isLocal);
-        return [...locals, ...newVideos];
+        // Filter out duplicates
+        const uniqueNew = newVideos.filter(nv => !locals.some(lv => lv.id === nv.id));
+        return [...locals, ...uniqueNew];
       });
     } catch (error) {
       console.error(error);
@@ -99,6 +100,35 @@ const App: React.FC = () => {
     window.scrollTo(0,0);
   }
 
+  // Helper to construct a User object from just Video info
+  const handleChannelClickFromVideo = (video: Video | Partial<User>) => {
+    const channelId = 'channelId' in video ? video.channelId : video.id;
+    const channelName = 'channelName' in video ? video.channelName : video.name;
+    const channelAvatar = 'channelAvatar' in video ? video.channelAvatar : video.avatar;
+
+    // If it's the current user, use their real profile
+    if (currentUser && currentUser.id === channelId) {
+      handleChannelClick(currentUser);
+      return;
+    }
+
+    // Otherwise construct a realistic mock profile
+    const mockChannel: User = {
+      id: channelId || 'unknown',
+      name: channelName || 'Unknown',
+      handle: '@' + (channelName || 'User').replace(/\s/g, '').toLowerCase(),
+      email: 'contact@streamtube.com',
+      avatar: channelAvatar || 'https://picsum.photos/100',
+      banner: `https://picsum.photos/seed/${channelId}/1200/200`,
+      subscribers: Math.floor(Math.random() * 1000000) + 1000,
+      watchHours: 0,
+      isMonetized: false,
+      estimatedRevenue: 0,
+      joinedDate: '2023-01-01'
+    };
+    handleChannelClick(mockChannel);
+  };
+
   const handleBack = () => {
     if (window.history.length > 1) {
        window.history.back();
@@ -117,7 +147,6 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (user: User) => {
-    // Initialize with realistic data
     const userWithStats: User = {
         ...user,
         subscribers: 850, 
@@ -149,7 +178,6 @@ const App: React.FC = () => {
 
   const handleUploadComplete = (newVideo: Video) => {
     setVideos(prev => [newVideo, ...prev]);
-    // In a real app we'd push to server
   };
 
   const categories = ['All', 'Gaming', 'Music', 'Live', 'Mixes', 'React Routers', 'Tailwind CSS', 'Computer Programming', 'Lo-fi', 'News', 'Comedy'];
@@ -188,7 +216,7 @@ const App: React.FC = () => {
           {viewState === ViewState.CHANNEL && currentChannel && (
             <ChannelPage 
               channel={currentChannel} 
-              videos={videos} // Pass all videos so we can filter
+              videos={videos} 
               onVideoSelect={handleVideoClick}
             />
           )}
@@ -231,7 +259,12 @@ const App: React.FC = () => {
                   ))
                 ) : (
                   videos.map(video => (
-                    <VideoCard key={video.id} video={video} onClick={handleVideoClick} />
+                    <VideoCard 
+                      key={video.id} 
+                      video={video} 
+                      onClick={handleVideoClick} 
+                      onChannelClick={() => handleChannelClickFromVideo(video)}
+                    />
                   ))
                 )}
               </div>
@@ -243,6 +276,7 @@ const App: React.FC = () => {
               video={currentVideo} 
               recommendedVideos={videos} 
               onVideoSelect={handleVideoClick}
+              onChannelClick={() => handleChannelClickFromVideo(currentVideo)}
             />
           )}
         </main>
@@ -279,7 +313,7 @@ const App: React.FC = () => {
            </div>
            <div 
               className="flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-white"
-              onClick={() => currentUser ? handleStudioOpen() : setAuthOpen(true)}
+              onClick={() => currentUser ? handleChannelClick(currentUser) : setAuthOpen(true)}
            >
               {currentUser ? (
                  <img src={currentUser.avatar} className="w-6 h-6 rounded-full mb-0.5 object-cover" alt="You" />

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Video, Comment } from '../types';
-import { VideoCard } from './VideoCard';
 import { generateComments } from '../services/geminiService';
 import { Button } from './Button';
 import { ThumbsUp, ThumbsDown, Share2, Scissors, MoreHorizontal } from 'lucide-react';
@@ -9,11 +8,13 @@ interface WatchPageProps {
   video: Video;
   recommendedVideos: Video[];
   onVideoSelect: (video: Video) => void;
+  onChannelClick?: () => void;
 }
 
-export const WatchPage: React.FC<WatchPageProps> = ({ video, recommendedVideos, onVideoSelect }) => {
+export const WatchPage: React.FC<WatchPageProps> = ({ video, recommendedVideos, onVideoSelect, onChannelClick }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     // Scroll to top when video changes
@@ -26,6 +27,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({ video, recommendedVideos, 
       setLoadingComments(false);
     };
     fetchComments();
+    setIsSubscribed(false);
   }, [video.id, video.title]);
 
   return (
@@ -52,13 +54,18 @@ export const WatchPage: React.FC<WatchPageProps> = ({ video, recommendedVideos, 
           
           <div className="flex flex-col md:flex-row md:items-center justify-between mt-3 gap-4">
             {/* Channel Info */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={onChannelClick}>
               <img src={video.channelAvatar} className="w-10 h-10 rounded-full bg-gray-700" alt="" />
               <div>
-                <h3 className="font-bold text-white">{video.channelName}</h3>
+                <h3 className="font-bold text-white hover:text-gray-300">{video.channelName}</h3>
                 <p className="text-xs text-gray-400">1.2M subscribers</p>
               </div>
-              <Button active className="ml-4 rounded-full">Subscribe</Button>
+              <button 
+                className={`ml-4 px-4 py-2 rounded-full font-medium text-sm transition-colors ${isSubscribed ? 'bg-[#272727] text-white' : 'bg-white text-black hover:bg-gray-200'}`}
+                onClick={(e) => { e.stopPropagation(); setIsSubscribed(!isSubscribed); }}
+              >
+                {isSubscribed ? 'Subscribed' : 'Subscribe'}
+              </button>
             </div>
 
             {/* Actions Bar */}
@@ -94,7 +101,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({ video, recommendedVideos, 
           <p className="text-white whitespace-pre-wrap leading-relaxed">
             {video.description}
             <br/><br/>
-            This is a generated description for the demo video. In a real app, this would contain full details, links, and timestamps provided by the creator.
+            <span className="text-blue-400 hover:underline cursor-pointer">#streamtube</span> <span className="text-blue-400 hover:underline cursor-pointer">#demo</span>
           </p>
         </div>
 

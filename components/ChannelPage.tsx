@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { User, Video } from '../types';
 import { Button } from './Button';
 import { VideoCard } from './VideoCard';
-import { Search, MoreVertical, Bell, ChevronDown } from 'lucide-react';
+import { Search, Bell, ChevronDown } from 'lucide-react';
 
 interface ChannelPageProps {
-  channel: User | any; // Accepts User or a derived channel object
+  channel: User; 
   videos: Video[]; // All videos, will filter by channel
   onVideoSelect: (video: Video) => void;
 }
@@ -14,27 +14,26 @@ export const ChannelPage: React.FC<ChannelPageProps> = ({ channel, videos, onVid
   const [activeTab, setActiveTab] = useState('Home');
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  // Filter videos for this channel
-  const channelVideos = videos.filter(v => v.channelName === channel.name || v.channelId === channel.id);
+  // Filter videos for this channel. Match by ID or Name (for generated content)
+  const channelVideos = videos.filter(v => v.channelId === channel.id || v.channelName === channel.name);
   
-  // Mock tabs
   const tabs = ['Home', 'Videos', 'Shorts', 'Live', 'Playlists', 'Community', 'Search'];
 
   return (
-    <div className="w-full min-h-screen bg-yt-base pb-20 md:pb-0">
+    <div className="w-full min-h-screen bg-yt-base pb-20 md:pb-0 animate-fade-in">
       {/* Banner */}
-      <div className="w-full aspect-[6/1] md:aspect-[6/1] bg-[#272727] overflow-hidden relative">
+      <div className="w-full aspect-[6/1] md:aspect-[6/1] bg-[#272727] overflow-hidden relative group">
         {channel.banner ? (
           <img src={channel.banner} alt="Banner" className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-r from-purple-900 to-blue-900"></div>
+          <div className="w-full h-full bg-gradient-to-r from-blue-900 to-purple-900"></div>
         )}
       </div>
 
       {/* Header Info */}
       <div className="max-w-[1284px] mx-auto px-4 md:px-6 py-4 md:py-6 flex flex-col md:flex-row gap-4 md:gap-6 items-start">
         {/* Avatar */}
-        <div className="w-20 h-20 md:w-40 md:h-40 rounded-full overflow-hidden border-2 border-[#0f0f0f] flex-shrink-0">
+        <div className="w-20 h-20 md:w-40 md:h-40 rounded-full overflow-hidden flex-shrink-0 ring-4 ring-yt-base z-10 -mt-4 md:mt-0 bg-yt-base">
           <img src={channel.avatar} alt={channel.name} className="w-full h-full object-cover" />
         </div>
 
@@ -42,14 +41,14 @@ export const ChannelPage: React.FC<ChannelPageProps> = ({ channel, videos, onVid
         <div className="flex-1 flex flex-col gap-2">
           <h1 className="text-2xl md:text-4xl font-bold text-white">{channel.name}</h1>
           <div className="text-gray-400 text-sm md:text-sm flex flex-col md:flex-row gap-1 md:gap-2">
-            <span className="font-medium text-white md:text-gray-400">{channel.handle || '@' + channel.name.replace(/\s/g, '')}</span>
+            <span className="font-medium text-white md:text-gray-400">{channel.handle}</span>
             <span className="hidden md:inline">•</span>
-            <span>{channel.subscribers?.toLocaleString() || '1.2M'} subscribers</span>
+            <span>{channel.subscribers?.toLocaleString()} subscribers</span>
             <span className="hidden md:inline">•</span>
             <span>{channelVideos.length} videos</span>
           </div>
           <div className="text-gray-400 text-sm line-clamp-2 max-w-2xl flex items-center gap-1 cursor-pointer">
-            <span className="truncate">Welcome to the official channel! We make videos about tech, coding, and AI.</span>
+            <span className="truncate">Welcome to the official channel of {channel.name}! Watch, like, and subscribe.</span>
             <ChevronDown className="w-4 h-4" />
           </div>
           
@@ -82,7 +81,7 @@ export const ChannelPage: React.FC<ChannelPageProps> = ({ channel, videos, onVid
             <div 
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-3 cursor-pointer border-b-2 transition-colors whitespace-nowrap font-medium text-sm uppercase tracking-wide ${
+              className={`py-3 cursor-pointer border-b-[3px] transition-colors whitespace-nowrap font-medium text-sm uppercase tracking-wide ${
                 activeTab === tab ? 'border-white text-white' : 'border-transparent text-gray-400 hover:text-white'
               }`}
             >
@@ -93,36 +92,27 @@ export const ChannelPage: React.FC<ChannelPageProps> = ({ channel, videos, onVid
       </div>
 
       {/* Content Area */}
-      <div className="max-w-[1284px] mx-auto px-4 md:px-6 py-6">
+      <div className="max-w-[1284px] mx-auto px-4 md:px-6 py-6 min-h-[400px]">
         {activeTab === 'Home' && (
           <div className="space-y-8">
             {/* Featured / For You */}
-            {channelVideos.length > 0 && (
-              <div>
+            {channelVideos.length > 0 ? (
+               <div>
                  <h3 className="text-lg font-bold mb-4">For You</h3>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {channelVideos.slice(0, 5).map(video => (
-                      <VideoCard key={video.id} video={video} onClick={onVideoSelect} />
-                    ))}
-                 </div>
-              </div>
-            )}
-            
-            {/* Videos Section */}
-            <div>
-               <h3 className="text-lg font-bold mb-4">Videos</h3>
-               {channelVideos.length === 0 ? (
-                 <div className="text-center py-20 text-gray-400">
-                   <p>This channel has no videos.</p>
-                 </div>
-               ) : (
                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {channelVideos.map(video => (
                       <VideoCard key={video.id} video={video} onClick={onVideoSelect} />
                     ))}
                  </div>
-               )}
-            </div>
+              </div>
+            ) : (
+               <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                 <div className="w-32 h-32 bg-[#272727] rounded-full flex items-center justify-center mb-4">
+                   <Search className="w-12 h-12" />
+                 </div>
+                 <p>This channel hasn't posted any content yet.</p>
+               </div>
+            )}
           </div>
         )}
 
@@ -145,7 +135,7 @@ export const ChannelPage: React.FC<ChannelPageProps> = ({ channel, videos, onVid
                      <span className="text-xs text-gray-400">2 days ago</span>
                    </div>
                    <p className="text-sm leading-relaxed">
-                     Thank you everyone for 1 Million subscribers! New special video coming this Friday! 🚀
+                     Thank you everyone for visiting my channel! Stay tuned for more updates. 🚀
                    </p>
                    <div className="flex items-center gap-4 mt-4">
                       <Button variant="icon" className="p-0 hover:bg-transparent"><div className="flex items-center gap-2"><span className="text-sm">12K</span></div></Button>

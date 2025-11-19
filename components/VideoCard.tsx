@@ -5,9 +5,15 @@ import { MoreVertical } from 'lucide-react';
 interface VideoCardProps {
   video: Video;
   onClick: (video: Video) => void;
+  onChannelClick?: () => void;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick, onChannelClick }) => {
+  const handleChannelClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChannelClick?.();
+  };
+
   return (
     <div 
       className="flex flex-col gap-2 cursor-pointer group active:scale-[0.98] transition-transform duration-100" 
@@ -29,11 +35,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick }) => {
       {/* Info Container */}
       <div className="flex gap-3 pr-4">
         {/* Avatar */}
-        <div className="flex-shrink-0">
+        <div 
+            className="flex-shrink-0"
+            onClick={handleChannelClick}
+        >
           <img 
             src={video.channelAvatar} 
             alt={video.channelName} 
-            className="w-9 h-9 rounded-full object-cover bg-[#272727]"
+            className="w-9 h-9 rounded-full object-cover bg-[#272727] hover:opacity-80"
           />
         </div>
 
@@ -43,7 +52,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick }) => {
             {video.title}
           </h3>
           <div className="text-yt-secondary text-xs md:text-sm mt-1">
-            <p>{video.channelName}</p>
+            <p className="hover:text-white cursor-pointer" onClick={handleChannelClick}>
+                {video.channelName}
+            </p>
             <p>{video.views} views • {video.postedAt}</p>
           </div>
         </div>

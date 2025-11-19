@@ -1,8 +1,16 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { Video, Comment } from "../types";
 
-// Initialize Gemini Client
-const apiKey = process.env.API_KEY || '';
+// Safe Initialization of Gemini Client for Browser Environments
+const getApiKey = () => {
+  try {
+    return (typeof process !== 'undefined' && process.env) ? (process.env.API_KEY || '') : '';
+  } catch {
+    return '';
+  }
+};
+
+const apiKey = getApiKey();
 const ai = new GoogleGenAI({ apiKey });
 
 // --- Text Generation ---
@@ -107,7 +115,7 @@ export const generateComments = async (videoTitle: string): Promise<Comment[]> =
 // --- Video Generation (Veo) ---
 
 export const generateVeoVideo = async (prompt: string): Promise<string> => {
-  const freshAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const freshAi = new GoogleGenAI({ apiKey: getApiKey() });
   try {
     let operation = await freshAi.models.generateVideos({
       model: 'veo-3.1-fast-generate-preview',
@@ -127,7 +135,7 @@ export const generateVeoVideo = async (prompt: string): Promise<string> => {
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!videoUri) throw new Error("No video URI returned");
 
-    const fetchUrl = `${videoUri}&key=${process.env.API_KEY}`;
+    const fetchUrl = `${videoUri}&key=${getApiKey()}`;
     const response = await fetch(fetchUrl);
     if (!response.ok) throw new Error("Failed to download generated video");
     const blob = await response.blob();
@@ -141,7 +149,7 @@ export const generateVeoVideo = async (prompt: string): Promise<string> => {
 // --- Image Generation (Imagen 3) ---
 
 export const generateThumbnail = async (prompt: string): Promise<string> => {
-  const freshAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const freshAi = new GoogleGenAI({ apiKey: getApiKey() });
   try {
     const response = await freshAi.models.generateImages({
         model: 'imagen-4.0-generate-001',
@@ -166,7 +174,7 @@ export const generateThumbnail = async (prompt: string): Promise<string> => {
 // --- Audio Generation (TTS) ---
 
 export const generateVoiceover = async (text: string): Promise<string> => {
-  const freshAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const freshAi = new GoogleGenAI({ apiKey: getApiKey() });
   try {
     const response = await freshAi.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",

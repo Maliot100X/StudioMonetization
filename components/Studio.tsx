@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { User, Video } from '../types';
 import { Button } from './Button';
-import { LayoutDashboard, DollarSign, Video as VideoIcon, Image as ImageIcon, Mic, Sparkles, ArrowLeft, Loader2, CheckCircle, BarChart3, UploadCloud, TrendingUp, HelpCircle, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, DollarSign, Video as VideoIcon, Image as ImageIcon, Mic, Sparkles, ArrowLeft, Loader2, CheckCircle, BarChart3, UploadCloud, TrendingUp, HelpCircle, MoreHorizontal, X } from 'lucide-react';
 import { generateVeoVideo, generateThumbnail, generateVoiceover } from '../services/geminiService';
 
 interface StudioProps {
@@ -10,7 +10,7 @@ interface StudioProps {
   onUploadComplete: (video: Video) => void;
 }
 
-type StudioTab = 'dashboard' | 'earn' | 'create_video' | 'create_thumb' | 'create_audio';
+type StudioTab = 'dashboard' | 'earn' | 'create_video' | 'create_thumb' | 'create_audio' | 'upload';
 
 export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }) => {
   const [activeTab, setActiveTab] = useState<StudioTab>('dashboard');
@@ -25,6 +25,12 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
   const [prompt, setPrompt] = useState('');
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
 
+  // Real Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadMeta, setUploadMeta] = useState({ title: '', description: '' });
+
   const resetGen = () => {
     setPrompt('');
     setGeneratedContent(null);
@@ -35,7 +41,6 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
   const handleGenerate = async (type: 'video' | 'thumb' | 'audio') => {
     if (!prompt.trim()) return;
     
-    // API Key Check
     if (window.aistudio?.hasSelectedApiKey) {
       const hasKey = await window.aistudio.hasSelectedApiKey();
       if (!hasKey) {
@@ -75,6 +80,54 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
     }, 3000);
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setUploadFile(file);
+      setUploadMeta({ ...uploadMeta, title: file.name.split('.')[0] });
+      simulateUpload();
+    }
+  };
+
+  const simulateUpload = () => {
+    setUploadProgress(0);
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 5;
+      });
+    }, 200);
+  };
+
+  const handlePublish = () => {
+    if (!uploadFile) return;
+
+    const newVideo: Video = {
+      id: `user-${Date.now()}`,
+      title: uploadMeta.title || 'Untitled Video',
+      description: uploadMeta.description || 'No description provided',
+      videoUrl: URL.createObjectURL(uploadFile), // Create local blob URL
+      thumbnailUrl: 'https://picsum.photos/seed/' + Date.now() + '/640/360',
+      channelName: user.name,
+      channelId: user.id,
+      channelAvatar: user.avatar,
+      views: '0',
+      postedAt: 'Just now',
+      duration: '0:00', // In real app, would read metadata
+      category: 'General',
+      isLocal: true
+    };
+
+    onUploadComplete(newVideo);
+    setActiveTab('dashboard');
+    setUploadFile(null);
+    setUploadProgress(0);
+    alert('Video published successfully!');
+  };
+
   const renderSidebarItem = (id: StudioTab, icon: React.ElementType, label: string) => (
     <div 
       onClick={() => { setActiveTab(id); resetGen(); }}
@@ -90,7 +143,7 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
   return (
     <div className="fixed inset-0 z-[60] bg-[#121212] text-white flex overflow-hidden animate-fade-in">
       {/* Sidebar */}
-      <div className="w-64 bg-[#0f0f0f] border-r border-[#3f3f3f] flex flex-col">
+      <div className="w-64 bg-[#0f0f0f] border-r border-[#3f3f3f] hidden md:flex flex-col">
         <div className="h-16 flex items-center px-6 border-b border-[#3f3f3f] gap-2">
           <Button variant="icon" onClick={onExit}>
             <ArrowLeft className="w-5 h-5" />
@@ -103,6 +156,15 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
           {renderSidebarItem('dashboard', LayoutDashboard, 'Dashboard')}
           {renderSidebarItem('earn', DollarSign, 'Earn')}
           
+          <div className="mt-6 px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</div>
+          <div 
+             onClick={() => setActiveTab('upload')}
+             className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${activeTab === 'upload' ? 'bg-[#272727] text-yt-red border-l-4 border-yt-red' : 'text-gray-400 hover:bg-[#1f1f1f] hover:text-white'}`}
+          >
+            <UploadCloud size={20} />
+            <span className="font-medium">Upload Video</span>
+          </div>
+
           <div className="mt-6 px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">AI Creative Suite</div>
           {renderSidebarItem('create_video', VideoIcon, 'Veo Video Gen')}
           {renderSidebarItem('create_thumb', ImageIcon, 'Imagen Thumbnails')}
@@ -122,12 +184,20 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#1f1f1f]">
-        <div className="p-8 max-w-6xl mx-auto">
+        {/* Mobile Header for Studio */}
+        <div className="md:hidden h-14 border-b border-[#3f3f3f] flex items-center px-4 bg-[#0f0f0f] sticky top-0 z-10">
+             <Button variant="icon" onClick={onExit}>
+               <ArrowLeft className="w-5 h-5" />
+             </Button>
+             <span className="font-bold ml-2">Studio Dashboard</span>
+        </div>
+
+        <div className="p-4 md:p-8 max-w-6xl mx-auto">
           
           {/* DASHBOARD */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6 animate-slide-up">
-              <h1 className="text-2xl font-bold">Channel Dashboard</h1>
+              <h1 className="text-2xl font-bold hidden md:block">Channel Dashboard</h1>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-[#282828] p-6 rounded-xl border border-[#3f3f3f]">
                   <h3 className="text-gray-400 text-sm font-medium mb-2">Total Subscribers</h3>
@@ -146,22 +216,99 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
                 </div>
               </div>
               
-              <div className="bg-[#282828] rounded-xl border border-[#3f3f3f] overflow-hidden">
-                <div className="p-4 border-b border-[#3f3f3f] font-bold">Latest Video Performance</div>
-                <div className="p-6 flex gap-4">
-                   <div className="w-40 aspect-video bg-black rounded-lg relative overflow-hidden">
-                     <img src="https://picsum.photos/seed/perf/300/200" className="object-cover w-full h-full opacity-50" />
-                     <div className="absolute inset-0 flex items-center justify-center">
-                       <BarChart3 className="w-8 h-8 text-gray-400" />
-                     </div>
-                   </div>
-                   <div className="space-y-2">
-                     <h4 className="font-bold">Analyzing data...</h4>
-                     <p className="text-sm text-gray-400">Ranking by views: 1 of 10</p>
-                     <p className="text-sm text-gray-400">Impressions click-through rate: 5.4%</p>
-                   </div>
-                </div>
+              {/* Quick Upload Button for Mobile */}
+              <div className="md:hidden">
+                 <Button 
+                   className="w-full py-3 flex items-center justify-center gap-2 bg-[#272727] border border-[#3f3f3f]" 
+                   onClick={() => setActiveTab('upload')}
+                 >
+                   <UploadCloud className="w-5 h-5" />
+                   Upload a Video
+                 </Button>
               </div>
+            </div>
+          )}
+
+          {/* UPLOAD TAB */}
+          {activeTab === 'upload' && (
+            <div className="max-w-3xl mx-auto animate-slide-up">
+               <div className="bg-[#282828] rounded-xl border border-[#3f3f3f] p-8 text-center">
+                  {!uploadFile ? (
+                    <div className="flex flex-col items-center py-10">
+                      <div className="w-32 h-32 bg-[#1f1f1f] rounded-full flex items-center justify-center mb-6">
+                        <UploadCloud className="w-16 h-16 text-gray-400" />
+                      </div>
+                      <h2 className="text-xl font-bold mb-2">Upload videos</h2>
+                      <p className="text-gray-400 text-sm mb-8">Drag and drop video files to upload</p>
+                      <Button onClick={() => fileInputRef.current?.click()}>
+                        Select Files
+                      </Button>
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        accept="video/*" 
+                        onChange={handleFileSelect}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-left">
+                       <div className="flex justify-between items-center mb-6">
+                         <h2 className="text-xl font-bold">{uploadMeta.title}</h2>
+                         <Button variant="icon" onClick={() => setUploadFile(null)}><X /></Button>
+                       </div>
+                       
+                       {/* Progress */}
+                       <div className="mb-8">
+                         <div className="flex justify-between text-xs mb-1">
+                           <span>{uploadProgress < 100 ? 'Uploading...' : 'Processing complete'}</span>
+                           <span>{uploadProgress}%</span>
+                         </div>
+                         <div className="w-full bg-[#1f1f1f] rounded-full h-1.5">
+                            <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" style={{width: `${uploadProgress}%`}}></div>
+                         </div>
+                       </div>
+
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-4">
+                             <div>
+                               <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Title (Required)</label>
+                               <input 
+                                  type="text" 
+                                  className="w-full bg-[#121212] border border-[#3f3f3f] p-3 rounded-lg outline-none focus:border-blue-500"
+                                  value={uploadMeta.title}
+                                  onChange={(e) => setUploadMeta({...uploadMeta, title: e.target.value})}
+                               />
+                             </div>
+                             <div>
+                               <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Description</label>
+                               <textarea 
+                                  className="w-full bg-[#121212] border border-[#3f3f3f] p-3 rounded-lg outline-none focus:border-blue-500 h-32 resize-none"
+                                  value={uploadMeta.description}
+                                  onChange={(e) => setUploadMeta({...uploadMeta, description: e.target.value})}
+                                  placeholder="Tell viewers about your video"
+                               />
+                             </div>
+                          </div>
+                          
+                          <div className="bg-[#121212] rounded-lg p-4">
+                            <div className="aspect-video bg-black rounded mb-2 flex items-center justify-center">
+                               <video src={URL.createObjectURL(uploadFile)} className="w-full h-full object-contain" />
+                            </div>
+                            <div className="text-xs text-gray-400 break-all">
+                               Filename: {uploadFile.name}
+                            </div>
+                          </div>
+                       </div>
+
+                       <div className="mt-8 flex justify-end border-t border-[#3f3f3f] pt-4">
+                          <Button onClick={handlePublish} disabled={uploadProgress < 100}>
+                             Publish Video
+                          </Button>
+                       </div>
+                    </div>
+                  )}
+               </div>
             </div>
           )}
 
@@ -215,121 +362,6 @@ export const Studio: React.FC<StudioProps> = ({ user, onExit, onUploadComplete }
                             </div>
                             <div className="text-3xl font-bold text-white">$8.15</div>
                             <p className="text-xs text-gray-400 mt-2">Cost for advertisers per 1K views</p>
-                        </div>
-                    </div>
-
-                    {/* Main Chart */}
-                    <div className="bg-[#282828] p-6 rounded-xl border border-[#3f3f3f]">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-bold text-lg">Monthly Revenue</h3>
-                            <div className="flex gap-2">
-                                <Button variant="secondary" className="text-xs py-1 h-8">Last 28 days</Button>
-                            </div>
-                        </div>
-                        
-                        <div className="flex items-end gap-1 h-48 mt-4 px-2">
-                            {Array.from({length: 28}).map((_, i) => {
-                                const height = Math.floor(Math.random() * 60) + 20;
-                                return (
-                                <div 
-                                    key={i} 
-                                    className="flex-1 bg-[#3ea6ff] opacity-80 hover:opacity-100 transition-opacity rounded-t-sm min-w-[4px] relative group cursor-pointer" 
-                                    style={{height: `${height}%`}} 
-                                >
-                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#1f1f1f] text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 pointer-events-none border border-[#3f3f3f]">
-                                        ${(height * 0.4).toFixed(2)}
-                                    </div>
-                                </div>
-                                );
-                            })}
-                        </div>
-                        <div className="border-t border-[#3f3f3f] mt-2 pt-2 flex justify-between text-xs text-gray-500">
-                            <span>Aug 1, 2024</span>
-                            <span>Aug 15, 2024</span>
-                            <span>Aug 29, 2024</span>
-                        </div>
-                    </div>
-
-                    {/* Breakdown Row */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {/* Revenue Sources */}
-                        <div className="bg-[#282828] p-6 rounded-xl border border-[#3f3f3f]">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="font-bold">Revenue Sources</h3>
-                                <Button variant="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button>
-                            </div>
-                            
-                            <div className="space-y-5">
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-sm text-gray-300">Skippable Video Ads</span>
-                                        <span className="text-sm font-bold">45%</span>
-                                    </div>
-                                    <div className="w-full bg-[#121212] h-2 rounded-full overflow-hidden">
-                                        <div className="bg-[#3ea6ff] h-2 rounded-full" style={{width: '45%'}}></div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-sm text-gray-300">Display Ads</span>
-                                        <span className="text-sm font-bold">30%</span>
-                                    </div>
-                                    <div className="w-full bg-[#121212] h-2 rounded-full overflow-hidden">
-                                        <div className="bg-purple-500 h-2 rounded-full" style={{width: '30%'}}></div>
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-sm text-gray-300">YouTube Premium</span>
-                                        <span className="text-sm font-bold">15%</span>
-                                    </div>
-                                    <div className="w-full bg-[#121212] h-2 rounded-full overflow-hidden">
-                                        <div className="bg-red-500 h-2 rounded-full" style={{width: '15%'}}></div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-sm text-gray-300">Bumper Ads</span>
-                                        <span className="text-sm font-bold">10%</span>
-                                    </div>
-                                    <div className="w-full bg-[#121212] h-2 rounded-full overflow-hidden">
-                                        <div className="bg-yellow-500 h-2 rounded-full" style={{width: '10%'}}></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Top Earning Videos */}
-                        <div className="bg-[#282828] p-6 rounded-xl border border-[#3f3f3f]">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="font-bold">Top Earning Content</h3>
-                                <span className="text-xs text-gray-400">Last 28 days</span>
-                            </div>
-                            <div className="space-y-4">
-                                {[1,2,3,4].map(i => (
-                                    <div key={i} className="flex gap-3 items-center group cursor-pointer">
-                                        <div className="w-16 h-9 bg-black rounded flex-shrink-0 overflow-hidden relative">
-                                            <img src={`https://picsum.photos/seed/${i+100}/160/90`} className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform" alt="" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-medium truncate group-hover:text-[#3ea6ff] transition-colors">
-                                                {i === 1 ? 'Building a YouTube Clone in 10 Mins' : 
-                                                 i === 2 ? 'Gemini AI Integration Tutorial' : 
-                                                 i === 3 ? 'React 19 Features Explained' : 
-                                                 'How to monetize your app'}
-                                            </div>
-                                            <div className="text-xs text-gray-400">Uploaded Aug {i}</div>
-                                        </div>
-                                        <div className="text-sm font-bold text-green-400">
-                                            +${(Math.random() * 50 + 10).toFixed(2)}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <Button variant="secondary" className="w-full mt-6 text-xs">See All</Button>
                         </div>
                     </div>
                  </div>

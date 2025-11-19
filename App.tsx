@@ -5,6 +5,7 @@ import { VideoCard } from './components/VideoCard';
 import { WatchPage } from './components/WatchPage';
 import { AuthModal } from './components/AuthModal';
 import { Studio } from './components/Studio';
+import { ChannelPage } from './components/ChannelPage';
 import { Video, ViewState, User } from './types';
 import { generateVideoRecommendations } from './services/geminiService';
 import { Button } from './components/Button';
@@ -23,6 +24,15 @@ const App: React.FC = () => {
   // Auth & User State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthOpen, setAuthOpen] = useState(false);
+  const [currentChannel, setCurrentChannel] = useState<User | null>(null);
+
+  // Restore session
+  useEffect(() => {
+     const savedUser = localStorage.getItem('st_user');
+     if (savedUser) {
+       setCurrentUser(JSON.parse(savedUser));
+     }
+  }, []);
 
   // Responsive check
   useEffect(() => {
@@ -44,6 +54,8 @@ const App: React.FC = () => {
         setViewState(ViewState.WATCH);
       } else if (window.location.hash === '#studio') {
         setViewState(ViewState.STUDIO);
+      } else if (window.location.hash === '#channel') {
+        setViewState(ViewState.CHANNEL);
       } else {
         setViewState(ViewState.HOME);
       }
@@ -61,7 +73,12 @@ const App: React.FC = () => {
     setLoading(true);
     try {
       const newVideos = await generateVideoRecommendations(query);
-      setVideos(newVideos);
+      // Prepend any local uploads we might have in memory if they match criteria (simplified)
+      setVideos(prev => {
+        // keep local uploads
+        const locals = prev.filter(v => v.isLocal);
+        return [...locals, ...newVideos];
+      });
     } catch (error) {
       console.error(error);
     }
@@ -75,8 +92,19 @@ const App: React.FC = () => {
     window.scrollTo(0,0);
   };
 
+  const handleChannelClick = (channel: User) => {
+    setCurrentChannel(channel);
+    setViewState(ViewState.CHANNEL);
+    window.history.pushState({ page: 'channel' }, '', '#channel');
+    window.scrollTo(0,0);
+  }
+
   const handleBack = () => {
-    window.history.back();
+    if (window.history.length > 1) {
+       window.history.back();
+    } else {
+       setViewState(ViewState.HOME);
+    }
   };
 
   const handleSearch = (query: string) => {
@@ -89,16 +117,26 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (user: User) => {
-    // Initialize with some demo stats for monetization
+    // Initialize with realistic data
     const userWithStats: User = {
         ...user,
-        subscribers: 850, // Close to threshold
-        watchHours: 3200, // Close to threshold
+        subscribers: 850, 
+        watchHours: 3200,
         isMonetized: false,
-        estimatedRevenue: 0
+        estimatedRevenue: 0,
+        joinedDate: new Date().toLocaleDateString(),
+        banner: `https://picsum.photos/seed/${user.id}/1200/200`,
+        handle: '@' + user.name.replace(/\s/g, '').toLowerCase()
     };
     setCurrentUser(userWithStats);
+    localStorage.setItem('st_user', JSON.stringify(userWithStats));
   };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('st_user');
+    window.location.reload();
+  }
 
   const handleStudioOpen = () => {
     if (!currentUser) {
@@ -111,7 +149,7 @@ const App: React.FC = () => {
 
   const handleUploadComplete = (newVideo: Video) => {
     setVideos(prev => [newVideo, ...prev]);
-    // Could add a toast notification here
+    // In a real app we'd push to server
   };
 
   const categories = ['All', 'Gaming', 'Music', 'Live', 'Mixes', 'React Routers', 'Tailwind CSS', 'Computer Programming', 'Lo-fi', 'News', 'Comedy'];
@@ -138,12 +176,23 @@ const App: React.FC = () => {
         onUploadClick={handleStudioOpen}
         viewState={viewState}
         onBack={handleBack}
+        onLogout={handleLogout}
+        onMyChannel={() => currentUser && handleChannelClick(currentUser)}
       />
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar isOpen={sidebarOpen} isMobile={isMobile} />
 
         <main className="flex-1 overflow-y-auto relative bg-yt-base no-scrollbar pb-16 md:pb-0">
+          
+          {viewState === ViewState.CHANNEL && currentChannel && (
+            <ChannelPage 
+              channel={currentChannel} 
+              videos={videos} // Pass all videos so we can filter
+              onVideoSelect={handleVideoClick}
+            />
+          )}
+
           {viewState === ViewState.HOME && (
             <div className="flex flex-col">
               {/* Chip Bar */}

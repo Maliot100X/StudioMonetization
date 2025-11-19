@@ -19,15 +19,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
     e.preventDefault();
     // Simulate API call
     setTimeout(() => {
+      const name = email.split('@')[0] || 'User';
       const mockUser: User = {
         id: 'u-' + Date.now(),
-        name: email.split('@')[0] || 'User',
+        name: name,
         email: email,
         avatar: `https://picsum.photos/seed/${email}/100/100`,
         subscribers: 0,
         watchHours: 0,
         isMonetized: false,
-        estimatedRevenue: 0
+        estimatedRevenue: 0,
+        handle: '@' + name.toLowerCase(),
+        banner: `https://picsum.photos/seed/${email}-banner/1200/200`,
+        joinedDate: new Date().toLocaleDateString(),
       };
       onLogin(mockUser);
       onClose();

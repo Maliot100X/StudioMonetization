@@ -66,7 +66,8 @@ export const generateVideoRecommendations = async (query: string = "general"): P
       id: `gen-${Date.now()}-${index}`,
       thumbnailUrl: `https://picsum.photos/seed/${v.id}${query}/640/360`,
       channelAvatar: `https://picsum.photos/seed/${v.channelName}/100/100`,
-      videoUrl: sampleVideos[index % sampleVideos.length]
+      videoUrl: sampleVideos[index % sampleVideos.length],
+      channelId: `ch-${Date.now()}-${index}`
     }));
 
   } catch (error) {
@@ -216,6 +217,7 @@ const getFallbackVideos = (): Video[] => [
     thumbnailUrl: 'https://picsum.photos/seed/bunny/640/360',
     videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
     channelName: 'Blender Foundation',
+    channelId: 'blender-foundation',
     channelAvatar: 'https://picsum.photos/seed/blender/100/100',
     views: '12M',
     postedAt: '10 years ago',
@@ -229,6 +231,7 @@ const getFallbackVideos = (): Video[] => [
     thumbnailUrl: 'https://picsum.photos/seed/elephant/640/360',
     videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
     channelName: 'Open Movie Project',
+    channelId: 'open-movie-project',
     channelAvatar: 'https://picsum.photos/seed/open/100/100',
     views: '8.4M',
     postedAt: '12 years ago',
@@ -242,6 +245,7 @@ const getFallbackVideos = (): Video[] => [
     thumbnailUrl: 'https://picsum.photos/seed/nature/640/360',
     videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     channelName: 'Earth Views',
+    channelId: 'earth-views',
     channelAvatar: 'https://picsum.photos/seed/earth/100/100',
     views: '2M',
     postedAt: '1 year ago',

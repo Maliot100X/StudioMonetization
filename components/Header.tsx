@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Search, Mic, Video, Bell, User as UserIcon, ArrowLeft, PlusSquare, Settings, LogOut } from 'lucide-react';
+import { Menu, Search, Mic, Video, Bell, User as UserIcon, ArrowLeft, PlusSquare, Settings, LogOut, UserCircle } from 'lucide-react';
 import { Button } from './Button';
 import { User, ViewState } from '../types';
 
@@ -13,6 +13,8 @@ interface HeaderProps {
   onUploadClick: () => void;
   viewState: ViewState;
   onBack: () => void;
+  onLogout?: () => void;
+  onMyChannel?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -24,7 +26,9 @@ export const Header: React.FC<HeaderProps> = ({
   onAuthClick,
   onUploadClick,
   viewState,
-  onBack
+  onBack,
+  onLogout,
+  onMyChannel
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -136,9 +140,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="absolute right-0 top-10 w-72 bg-[#282828] rounded-xl shadow-2xl border border-[#3f3f3f] overflow-hidden animate-fade-in">
                   <div className="p-4 border-b border-[#3f3f3f] flex gap-3 items-center">
                     <img src={currentUser.avatar} className="w-10 h-10 rounded-full" alt="" />
-                    <div>
-                      <p className="font-bold text-sm">{currentUser.name}</p>
-                      <p className="text-xs text-gray-400">{currentUser.email}</p>
+                    <div className="overflow-hidden">
+                      <p className="font-bold text-sm truncate">{currentUser.name}</p>
+                      <p className="text-xs text-gray-400 truncate">{currentUser.email}</p>
+                      <p className="text-xs text-blue-400 mt-1 cursor-pointer hover:underline" onClick={() => { setShowUserMenu(false); onMyChannel?.(); }}>View your channel</p>
                     </div>
                   </div>
                   <div className="py-2">
@@ -149,7 +154,17 @@ export const Header: React.FC<HeaderProps> = ({
                       <Settings className="w-5 h-5 text-gray-400" />
                       <span className="text-sm">YouTube Studio</span>
                     </div>
-                    <div className="flex items-center gap-3 px-4 py-3 hover:bg-[#3f3f3f] cursor-pointer">
+                    <div 
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-[#3f3f3f] cursor-pointer"
+                      onClick={() => { setShowUserMenu(false); onMyChannel?.(); }}
+                    >
+                      <UserCircle className="w-5 h-5 text-gray-400" />
+                      <span className="text-sm">Your Channel</span>
+                    </div>
+                    <div 
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-[#3f3f3f] cursor-pointer"
+                      onClick={() => { setShowUserMenu(false); onLogout?.(); }}
+                    >
                        <LogOut className="w-5 h-5 text-gray-400" />
                        <span className="text-sm">Sign out</span>
                     </div>

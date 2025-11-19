@@ -2,19 +2,32 @@ import React, { useEffect, useState } from 'react';
 import { Video, Comment } from '../types';
 import { generateComments } from '../services/geminiService';
 import { Button } from './Button';
-import { ThumbsUp, ThumbsDown, Share2, Scissors, MoreHorizontal } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Share2, Scissors, MoreHorizontal, SendHorizontal } from 'lucide-react';
 
 interface WatchPageProps {
   video: Video;
   recommendedVideos: Video[];
   onVideoSelect: (video: Video) => void;
   onChannelClick?: () => void;
+  isLiked: boolean;
+  onToggleLike: () => void;
+  isSubscribed: boolean;
+  onToggleSubscribe: () => void;
 }
 
-export const WatchPage: React.FC<WatchPageProps> = ({ video, recommendedVideos, onVideoSelect, onChannelClick }) => {
+export const WatchPage: React.FC<WatchPageProps> = ({ 
+    video, 
+    recommendedVideos, 
+    onVideoSelect, 
+    onChannelClick,
+    isLiked,
+    onToggleLike,
+    isSubscribed,
+    onToggleSubscribe
+}) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [commentInput, setCommentInput] = useState('');
 
   useEffect(() => {
     // Scroll to top when video changes
@@ -27,8 +40,24 @@ export const WatchPage: React.FC<WatchPageProps> = ({ video, recommendedVideos, 
       setLoadingComments(false);
     };
     fetchComments();
-    setIsSubscribed(false);
   }, [video.id, video.title]);
+
+  const handlePostComment = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(!commentInput.trim()) return;
+      
+      const newComment: Comment = {
+          id: 'local-' + Date.now(),
+          author: 'You',
+          text: commentInput,
+          likes: 0,
+          timeAgo: 'Just now',
+          avatar: 'https://picsum.photos/50'
+      };
+      
+      setComments([newComment, ...comments]);
+      setCommentInput('');
+  };
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 max-w-[1800px] mx-auto p-4 md:p-6">
@@ -62,7 +91,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({ video, recommendedVideos, 
               </div>
               <button 
                 className={`ml-4 px-4 py-2 rounded-full font-medium text-sm transition-colors ${isSubscribed ? 'bg-[#272727] text-white' : 'bg-white text-black hover:bg-gray-200'}`}
-                onClick={(e) => { e.stopPropagation(); setIsSubscribed(!isSubscribed); }}
+                onClick={(e) => { e.stopPropagation(); onToggleSubscribe(); }}
               >
                 {isSubscribed ? 'Subscribed' : 'Subscribe'}
               </button>
@@ -71,9 +100,13 @@ export const WatchPage: React.FC<WatchPageProps> = ({ video, recommendedVideos, 
             {/* Actions Bar */}
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
               <div className="flex items-center bg-[#272727] rounded-full">
-                <Button variant="ghost" className="rounded-l-full flex gap-2 px-4 border-r border-[#3f3f3f]">
-                  <ThumbsUp className="w-5 h-5" />
-                  <span>12K</span>
+                <Button 
+                    variant="ghost" 
+                    className={`rounded-l-full flex gap-2 px-4 border-r border-[#3f3f3f] ${isLiked ? 'text-blue-400' : ''}`}
+                    onClick={onToggleLike}
+                >
+                  <ThumbsUp className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                  <span>{isLiked ? 'Liked' : '12K'}</span>
                 </Button>
                 <Button variant="ghost" className="rounded-r-full px-4">
                   <ThumbsDown className="w-5 h-5" />
@@ -112,16 +145,24 @@ export const WatchPage: React.FC<WatchPageProps> = ({ video, recommendedVideos, 
           </div>
           
           {/* Add Comment Input */}
-          <div className="flex gap-4 mb-8">
+          <form onSubmit={handlePostComment} className="flex gap-4 mb-8">
             <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-sm font-bold flex-shrink-0">U</div>
-            <div className="flex-1">
+            <div className="flex-1 flex flex-col gap-2">
               <input 
                 type="text" 
                 placeholder="Add a comment..." 
                 className="w-full bg-transparent border-b border-[#3f3f3f] pb-1 focus:border-white outline-none transition-colors"
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
               />
+              {commentInput && (
+                  <div className="flex justify-end gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setCommentInput('')}>Cancel</Button>
+                      <Button type="submit" variant="primary" className="rounded-full px-4 py-1">Comment</Button>
+                  </div>
+              )}
             </div>
-          </div>
+          </form>
 
           {/* Comment List */}
           <div className="space-y-6">

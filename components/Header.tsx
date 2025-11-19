@@ -32,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +41,13 @@ export const Header: React.FC<HeaderProps> = ({
       setMobileSearchOpen(false);
     }
   };
+
+  // Mock Notifications
+  const notifications = [
+      { id: 1, text: "MrBeast uploaded: 'I Survived 50 Hours in Antarctica'", time: "2m ago", read: false },
+      { id: 2, text: "MKBHD posted a new review: 'iPhone 16 Pro'", time: "1h ago", read: false },
+      { id: 3, text: "Veritasium: 'The Math of the Impossible'", time: "3h ago", read: true },
+  ];
 
   // Mobile Search View
   if (isMobileSearchOpen) {
@@ -74,14 +82,14 @@ export const Header: React.FC<HeaderProps> = ({
           <Menu className="w-6 h-6" />
         </Button>
         
-        {/* Mobile Back Button (Only when watching) */}
-        {viewState === ViewState.WATCH && (
+        {/* Mobile Back Button (Only when watching or studio) */}
+        {(viewState === ViewState.WATCH || viewState === ViewState.STUDIO || viewState === ViewState.SHORTS) && (
            <Button variant="icon" className="md:hidden" onClick={onBack}>
               <ArrowLeft className="w-6 h-6" />
            </Button>
         )}
 
-        <div className="flex items-center gap-1 cursor-pointer" onClick={viewState === ViewState.WATCH ? onBack : () => window.scrollTo(0,0)}>
+        <div className="flex items-center gap-1 cursor-pointer" onClick={viewState === ViewState.WATCH ? onBack : () => window.location.href='/'}>
           <div className="bg-red-600 text-white p-1 rounded-lg">
             <Video className="w-5 h-5 fill-current" />
           </div>
@@ -122,9 +130,32 @@ export const Header: React.FC<HeaderProps> = ({
             <Button variant="icon" onClick={onUploadClick} className="hidden md:flex" title="Create">
               <PlusSquare className="w-6 h-6" />
             </Button>
-            <Button variant="icon" className="hidden md:flex">
-              <Bell className="w-6 h-6" />
-            </Button>
+            
+            {/* Notifications */}
+            <div className="relative hidden md:block">
+                <Button variant="icon" onClick={() => setShowNotifications(!showNotifications)}>
+                  <div className="relative">
+                     <Bell className="w-6 h-6" />
+                     <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] px-1 rounded-full border border-yt-base">3</span>
+                  </div>
+                </Button>
+                {showNotifications && (
+                   <div className="absolute right-0 top-12 w-80 bg-[#282828] rounded-xl shadow-2xl border border-[#3f3f3f] overflow-hidden animate-fade-in z-50">
+                       <div className="p-3 border-b border-[#3f3f3f] font-bold">Notifications</div>
+                       <div className="max-h-96 overflow-y-auto">
+                           {notifications.map(n => (
+                               <div key={n.id} className="p-3 hover:bg-[#3f3f3f] cursor-pointer flex gap-3">
+                                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                                   <div>
+                                       <p className="text-sm line-clamp-2">{n.text}</p>
+                                       <p className="text-xs text-gray-400 mt-1">{n.time}</p>
+                                   </div>
+                               </div>
+                           ))}
+                       </div>
+                   </div>
+                )}
+            </div>
             
             {/* User Avatar */}
             <div className="relative">
@@ -137,7 +168,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* User Dropdown Menu */}
               {showUserMenu && (
-                <div className="absolute right-0 top-10 w-72 bg-[#282828] rounded-xl shadow-2xl border border-[#3f3f3f] overflow-hidden animate-fade-in">
+                <div className="absolute right-0 top-10 w-72 bg-[#282828] rounded-xl shadow-2xl border border-[#3f3f3f] overflow-hidden animate-fade-in z-50">
                   <div className="p-4 border-b border-[#3f3f3f] flex gap-3 items-center">
                     <img src={currentUser.avatar} className="w-10 h-10 rounded-full" alt="" />
                     <div className="overflow-hidden">

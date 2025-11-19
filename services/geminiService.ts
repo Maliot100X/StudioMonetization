@@ -67,13 +67,24 @@ export const generateVideoRecommendations = async (query: string = "general"): P
       thumbnailUrl: `https://picsum.photos/seed/${v.id}${query}/640/360`,
       channelAvatar: `https://picsum.photos/seed/${v.channelName}/100/100`,
       videoUrl: sampleVideos[index % sampleVideos.length],
-      channelId: `ch-${Date.now()}-${index}` // Assign unique channel IDs
+      channelId: `ch-${Date.now()}-${index}`
     }));
 
   } catch (error) {
     console.error("Gemini generation failed", error);
     return getFallbackVideos();
   }
+};
+
+export const generateShorts = async (): Promise<Video[]> => {
+  // Shorts behave like videos but with vertical aspect ratio prompts usually
+  // For this demo we reuse the video structure but flag them
+  const videos = await generateVideoRecommendations("viral youtube shorts, funny, quick");
+  return videos.map(v => ({
+    ...v,
+    isShort: true,
+    thumbnailUrl: `https://picsum.photos/seed/${v.id}/360/640` // Vertical aspect
+  }));
 };
 
 export const generateComments = async (videoTitle: string): Promise<Comment[]> => {

@@ -6,6 +6,7 @@ import { WatchPage } from './components/WatchPage';
 import { AuthModal } from './components/AuthModal';
 import { Studio } from './components/Studio';
 import { ChannelPage } from './components/ChannelPage';
+import { ShortsPage } from './components/ShortsPage';
 import { Video, ViewState, User } from './types';
 import { generateVideoRecommendations } from './services/geminiService';
 import { Button } from './components/Button';
@@ -25,6 +26,11 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthOpen, setAuthOpen] = useState(false);
   const [currentChannel, setCurrentChannel] = useState<User | null>(null);
+
+  // Persistent App State (Liked, History, Subs)
+  const [historyIds, setHistoryIds] = useState<string[]>([]);
+  const [likedIds, setLikedIds] = useState<string[]>([]);
+  const [subscribedChannelIds, setSubscribedChannelIds] = useState<string[]>([]);
 
   // Restore session
   useEffect(() => {
@@ -56,6 +62,14 @@ const App: React.FC = () => {
         setViewState(ViewState.STUDIO);
       } else if (window.location.hash === '#channel') {
         setViewState(ViewState.CHANNEL);
+      } else if (window.location.hash === '#shorts') {
+        setViewState(ViewState.SHORTS);
+      } else if (window.location.hash === '#subscriptions') {
+        setViewState(ViewState.SUBSCRIPTIONS);
+      } else if (window.location.hash === '#history') {
+        setViewState(ViewState.HISTORY);
+      } else if (window.location.hash === '#liked') {
+        setViewState(ViewState.LIKED);
       } else {
         setViewState(ViewState.HOME);
       }
@@ -73,7 +87,6 @@ const App: React.FC = () => {
     setLoading(true);
     try {
       const newVideos = await generateVideoRecommendations(query);
-      // Prepend any local uploads we might have in memory if they match criteria (simplified)
       setVideos(prev => {
         const locals = prev.filter(v => v.isLocal);
         // Filter out duplicates
@@ -89,6 +102,10 @@ const App: React.FC = () => {
   const handleVideoClick = (video: Video) => {
     setCurrentVideo(video);
     setViewState(ViewState.WATCH);
+    // Add to history
+    if (!historyIds.includes(video.id)) {
+        setHistoryIds(prev => [video.id, ...prev]);
+    }
     window.history.pushState({ page: 'watch' }, '', '#watch');
     window.scrollTo(0,0);
   };
@@ -180,17 +197,75 @@ const App: React.FC = () => {
     setVideos(prev => [newVideo, ...prev]);
   };
 
+  const toggleLike = (videoId: string) => {
+      if (likedIds.includes(videoId)) {
+          setLikedIds(likedIds.filter(id => id !== videoId));
+      } else {
+          setLikedIds([...likedIds, videoId]);
+      }
+  };
+
+  const toggleSubscribe = (channelId: string) => {
+      if (subscribedChannelIds.includes(channelId)) {
+          setSubscribedChannelIds(subscribedChannelIds.filter(id => id !== channelId));
+      } else {
+          setSubscribedChannelIds([...subscribedChannelIds, channelId]);
+      }
+  };
+
   const categories = ['All', 'Gaming', 'Music', 'Live', 'Mixes', 'React Routers', 'Tailwind CSS', 'Computer Programming', 'Lo-fi', 'News', 'Comedy'];
+
+  // Helper to set view from Sidebar
+  const handleViewChange = (viewStr: string) => {
+      const view = ViewState[viewStr as keyof typeof ViewState];
+      setViewState(view);
+      if (view === ViewState.HOME) window.history.pushState({}, '', '/');
+      else window.history.pushState({}, '', '#' + viewStr.toLowerCase());
+      
+      // Close mobile menu if open
+      if(isMobile) setSidebarOpen(false);
+  }
+
+  // Render filtered views
+  const renderFilteredView = (title: string, filteredVideos: Video[], emptyMsg: string) => (
+      <div className="p-4 md:p-8">
+          <h2 className="text-2xl font-bold mb-6">{title}</h2>
+          {filteredVideos.length > 0 ? (
+             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-y-8 gap-x-4">
+                 {filteredVideos.map(video => (
+                    <VideoCard 
+                      key={video.id} 
+                      video={video} 
+                      onClick={handleVideoClick} 
+                      onChannelClick={() => handleChannelClickFromVideo(video)}
+                    />
+                 ))}
+             </div>
+          ) : (
+             <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                 <div className="w-24 h-24 bg-[#272727] rounded-full mb-4 flex items-center justify-center">
+                    {title === 'History' && <div className="text-4xl">🕰️</div>}
+                    {title === 'Liked Videos' && <div className="text-4xl">👍</div>}
+                    {title === 'Subscriptions' && <div className="text-4xl">📺</div>}
+                 </div>
+                 <p>{emptyMsg}</p>
+             </div>
+          )}
+      </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-yt-base text-white">
-      {/* The Studio is a full screen overlay */}
+      {/* Full Screen Overlays */}
       {viewState === ViewState.STUDIO && currentUser && (
         <Studio 
           user={currentUser} 
           onExit={() => handleBack()} 
           onUploadComplete={handleUploadComplete}
         />
+      )}
+      {viewState === ViewState.SHORTS && (
+         <ShortsPage onBack={() => handleViewChange('HOME')} />
       )}
 
       {/* Normal App Layout */}
@@ -209,7 +284,12 @@ const App: React.FC = () => {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar isOpen={sidebarOpen} isMobile={isMobile} />
+        <Sidebar 
+            isOpen={sidebarOpen} 
+            isMobile={isMobile} 
+            activeView={viewState} 
+            onViewChange={handleViewChange}
+        />
 
         <main className="flex-1 overflow-y-auto relative bg-yt-base no-scrollbar pb-16 md:pb-0">
           
@@ -219,6 +299,24 @@ const App: React.FC = () => {
               videos={videos} 
               onVideoSelect={handleVideoClick}
             />
+          )}
+          
+          {viewState === ViewState.HISTORY && renderFilteredView(
+              'Watch History', 
+              videos.filter(v => historyIds.includes(v.id)), 
+              'Videos you watch will appear here.'
+          )}
+
+          {viewState === ViewState.LIKED && renderFilteredView(
+              'Liked Videos', 
+              videos.filter(v => likedIds.includes(v.id)), 
+              'Videos you like will appear here.'
+          )}
+
+          {viewState === ViewState.SUBSCRIPTIONS && renderFilteredView(
+              'Subscriptions', 
+              videos.filter(v => subscribedChannelIds.includes(v.channelId)), 
+              'Videos from channels you subscribe to will appear here.'
           )}
 
           {viewState === ViewState.HOME && (
@@ -277,6 +375,10 @@ const App: React.FC = () => {
               recommendedVideos={videos} 
               onVideoSelect={handleVideoClick}
               onChannelClick={() => handleChannelClickFromVideo(currentVideo)}
+              isLiked={likedIds.includes(currentVideo.id)}
+              onToggleLike={() => toggleLike(currentVideo.id)}
+              isSubscribed={subscribedChannelIds.includes(currentVideo.channelId)}
+              onToggleSubscribe={() => toggleSubscribe(currentVideo.channelId)}
             />
           )}
         </main>
@@ -289,13 +391,19 @@ const App: React.FC = () => {
       />
 
       {/* Mobile Bottom Navigation */}
-      {isMobile && !isMobileSearchOpen && viewState !== ViewState.WATCH && viewState !== ViewState.STUDIO && (
+      {isMobile && !isMobileSearchOpen && viewState !== ViewState.WATCH && viewState !== ViewState.STUDIO && viewState !== ViewState.SHORTS && (
         <div className="fixed bottom-0 left-0 right-0 bg-yt-base border-t border-[#3f3f3f] flex justify-around items-center h-12 pb-1 z-50">
-           <div className="flex flex-col items-center justify-center w-full h-full text-white" onClick={() => setViewState(ViewState.HOME)}>
+           <div 
+               className={`flex flex-col items-center justify-center w-full h-full ${viewState === ViewState.HOME ? 'text-white' : 'text-gray-400'}`} 
+               onClick={() => handleViewChange('HOME')}
+            >
               <Home className="w-6 h-6 mb-0.5" />
               <span className="text-[10px]">Home</span>
            </div>
-           <div className="flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-white">
+           <div 
+               className={`flex flex-col items-center justify-center w-full h-full text-gray-400`}
+               onClick={() => handleViewChange('SHORTS')}
+            >
               <Compass className="w-6 h-6 mb-0.5" />
               <span className="text-[10px]">Shorts</span>
            </div>
@@ -307,7 +415,10 @@ const App: React.FC = () => {
                 <PlusSquare className="w-6 h-6" />
               </div>
            </div>
-           <div className="flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-white">
+           <div 
+               className={`flex flex-col items-center justify-center w-full h-full ${viewState === ViewState.SUBSCRIPTIONS ? 'text-white' : 'text-gray-400'}`}
+               onClick={() => handleViewChange('SUBSCRIPTIONS')}
+           >
               <PlaySquare className="w-6 h-6 mb-0.5" />
               <span className="text-[10px]">Subs</span>
            </div>

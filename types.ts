@@ -12,6 +12,7 @@ export interface Video {
   description: string;
   category: string;
   isLocal?: boolean; // To track if it was uploaded by the user
+  isShort?: boolean;
 }
 
 export interface Comment {
@@ -42,7 +43,11 @@ export enum ViewState {
   WATCH = 'WATCH',
   SEARCH = 'SEARCH',
   STUDIO = 'STUDIO',
-  CHANNEL = 'CHANNEL'
+  CHANNEL = 'CHANNEL',
+  SHORTS = 'SHORTS',
+  HISTORY = 'HISTORY',
+  LIKED = 'LIKED',
+  SUBSCRIPTIONS = 'SUBSCRIPTIONS'
 }
 
 declare global {

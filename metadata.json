@@ -1,0 +1,5 @@
+{
+  "name": "StreamTube",
+  "description": "A fully functional video streaming platform replica featuring a responsive mobile-first design, real-time AI-generated video recommendations, and comment simulation. While I cannot generate an APK file directly as an AI, this Progressive Web App (PWA) is designed to be installed on your home screen and function exactly like a native app.",
+  "requestFramePermissions": []
+}
